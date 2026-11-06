@@ -2,7 +2,7 @@
   "default": {
     "accessibility": [
       "LJWatson",
-      "jenknoll"
+      "jenjknoll"
     ],
     "built-in-ai": "tomayac",
     "chrome-extensions": [
