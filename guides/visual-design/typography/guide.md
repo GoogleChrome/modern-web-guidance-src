@@ -12,11 +12,8 @@ web-feature-ids:
   - text-wrap-pretty
   - min-max-clamp
   - viewport-units
-  - width-height
   - logical-properties
   - hyphens
-  - lang-attr
-  - white-space
   - ch
 todo-web-feature-ids:
   - text-fit
