@@ -42,15 +42,10 @@ describe('runAnalyzeCli', () => {
     assert.match(res2.output, /Usage: modern-web-guidance legacy-scan/);
     assert.equal(res2.output, `${ANALYZE_CLI_HELP}\n`);
 
-    const res3 = await runAnalyzeCli(['legacyscan', '-h']);
+    const res3 = await runAnalyzeCli(['analyze', '-h']);
     assert.equal(res3.exitCode, 0);
     assert.match(res3.output, /Usage: modern-web-guidance legacy-scan/);
     assert.equal(res3.output, `${ANALYZE_CLI_HELP}\n`);
-
-    const res4 = await runAnalyzeCli(['analyze', '-h']);
-    assert.equal(res4.exitCode, 0);
-    assert.match(res4.output, /Usage: modern-web-guidance legacy-scan/);
-    assert.equal(res4.output, `${ANALYZE_CLI_HELP}\n`);
   });
 
   it('handles non-existent target path with error and exit code 1', async () => {
@@ -156,7 +151,7 @@ describe('runAnalyzeCli', () => {
     assert.match(reducedZeroOutput, /0 findings from 1 qualified guide\./);
     assert.match(
       reducedZeroOutput,
-      /Note: legacy-scan covers legacy patterns for 1 guides \(~20% of the guidance corpus\)\. Use 'modern-web-guidance search <topic>' for general UI\/platform guidance\./,
+      /Note: legacy-scan covers legacy patterns for 1 guide \(~20% of the guidance corpus\)\. Use 'modern-web-guidance search <topic>' for general UI\/platform guidance\./,
     );
   });
 
@@ -745,10 +740,10 @@ describe('runAnalyzeCli', () => {
     });
   });
 
-  it('supports legacy-scan, legacyscan, and analyze aliases with dynamic activeGuideCount note across 0 and >0 findings', async () => {
+  it('supports legacy-scan and analyze aliases with dynamic activeGuideCount note across 0 and >0 findings', async () => {
     await withTempDir(async (testDir) => {
       // 0 findings case:
-      for (const cmd of ['legacy-scan', 'legacyscan', 'analyze']) {
+      for (const cmd of ['legacy-scan', 'analyze']) {
         const resHumanZero = await runAnalyzeCli([cmd, testDir]);
         assert.equal(resHumanZero.exitCode, 0);
         assert.match(
@@ -775,7 +770,7 @@ describe('runAnalyzeCli', () => {
         'utf8',
       );
 
-      for (const cmd of ['legacy-scan', 'legacyscan', 'analyze']) {
+      for (const cmd of ['legacy-scan', 'analyze']) {
         const resHuman = await runAnalyzeCli([cmd, testDir]);
         assert.equal(resHuman.exitCode, 0);
         assert.match(

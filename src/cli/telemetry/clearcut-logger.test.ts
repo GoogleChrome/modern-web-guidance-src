@@ -128,6 +128,28 @@ describe('ClearcutLogger', () => {
     }
   });
 
+  it('logs LEGACY_SCAN tool command correctly via watchdog', async () => {
+    const sentMessages: any[] = [];
+    const sendMock = mock.method(WatchdogClient.prototype, 'send', (msg: any) => {
+      sentMessages.push(msg);
+    });
+
+    try {
+      const logger = new ClearcutLogger({ skillVersion: '2026_06_04-scan' });
+      await logger.logToolCommand(180, true, CommandType.LEGACY_SCAN);
+
+      assert.ok(sentMessages.length > 0, 'Should send at least one message to watchdog');
+      const payload = sentMessages[sentMessages.length - 1].payload;
+      assert.deepStrictEqual(payload.tool_command, { command_type: CommandType.LEGACY_SCAN });
+      assert.strictEqual(payload.tool_command.command_type, 6);
+      assert.strictEqual(payload.success, true);
+      assert.strictEqual(payload.latency_ms, 250); // 180 bucketized to 250
+      assert.strictEqual(payload.skill_version, '2026_06_04-scan');
+    } finally {
+      sendMock.mock.restore();
+    }
+  });
+
   it('logs retrieve results correctly via watchdog', async () => {
     const sentMessages: any[] = [];
     const sendMock = mock.method(WatchdogClient.prototype, 'send', (msg: any) => {

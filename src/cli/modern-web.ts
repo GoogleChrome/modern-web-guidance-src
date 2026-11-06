@@ -90,13 +90,14 @@ async function main() {
 
   const command = positionals[0];
 
-  if (command === "legacy-scan" || command === "legacyscan" || command === "analyze") {
+  if (command === "legacy-scan" || command === "analyze") {
     maybeEmitUpdateMessage(skillVersion);
     // Dynamic import to keep the CLI loading fast -- only load analyzer dependencies if needed.
     const { runAnalyzeCli, writeAnalyzeCliResult } = await import("../analyzing/cli.ts");
     const args = process.argv.slice(2);
     const cmdIdx = args.indexOf(command);
     if (cmdIdx !== -1) args.splice(cmdIdx, 1);
+    const startTime = Date.now();
     const result = await runAnalyzeCli(args);
     if (result.exitCode === 0 && result.data) {
       logToolResult(
@@ -104,6 +105,8 @@ async function main() {
         result.data.guides.map((g) => ({ id: g.guideId, count: g.count })),
       );
     }
+    const logger = new ClearcutLogger({ skillVersion });
+    await logger.logToolCommand(Date.now() - startTime, result.exitCode === 0, CommandType.LEGACY_SCAN);
     process.exit(writeAnalyzeCliResult(result));
   }
 

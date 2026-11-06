@@ -14,7 +14,7 @@ The analyzer can be run locally via the repository runner `gd` or in downstream 
 
 ```bash
 # In the modern-web-guidance repository:
-node bin/gd.ts analyze [path/to/project] [options]
+node bin/gd.ts legacy-scan [path/to/project] [options]
 
 # In any brownfield project via npx:
 npx -y modern-web-guidance@latest legacy-scan [path/to/project] [options]

@@ -176,10 +176,10 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('supports legacy-scan, legacyscan, and analyze subcommands cleanly in modern-web CLI', () => {
+  it('supports legacy-scan and analyze subcommands cleanly in modern-web CLI', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-subcommands-test-'));
     try {
-      for (const cmd of ['legacy-scan', 'legacyscan', 'analyze']) {
+      for (const cmd of ['legacy-scan', 'analyze']) {
         const resJson = runCLI([cmd, tempDir, '--json']);
         assert.strictEqual(resJson.status, 0);
         const data = JSON.parse(resJson.stdout);
@@ -198,7 +198,7 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('only logs to modern-web.log when analyze exits with code 0 and result.data is present', () => {
+  it('only logs to modern-web.log when analyze or legacy-scan exits with code 0 and result.data is present', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-log-test-'));
     const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-logdir-'));
     try {
@@ -235,6 +235,15 @@ describe('modern-web CLI', () => {
       const parsedLog = JSON.parse(logContent.trim());
       assert.strictEqual(parsedLog.tool, 'analyze');
       assert.ok(Array.isArray(parsedLog.result));
+
+      // 4. Successful legacy-scan call -> exit code 0, SHOULD also log tool: 'analyze' to modern-web.log
+      fs.rmSync(logPath, { force: true });
+      const okLegacyScanRes = runCLIWithLogging(['legacy-scan', tempDir, '--json']);
+      assert.strictEqual(okLegacyScanRes.status, 0);
+      assert.strictEqual(fs.existsSync(logPath), true, 'Successful legacy-scan run should create modern-web.log');
+      const legacyScanLog = JSON.parse(fs.readFileSync(logPath, 'utf8').trim());
+      assert.strictEqual(legacyScanLog.tool, 'analyze');
+      assert.ok(Array.isArray(legacyScanLog.result));
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
       fs.rmSync(logDir, { recursive: true, force: true });
