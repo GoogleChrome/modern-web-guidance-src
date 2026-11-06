@@ -11,7 +11,7 @@
 Load `@microsoft/focusgroup-polyfill` only when native support is missing:
 
 ```js
-if (!('focusGroup' in HTMLElement.prototype)) {
+if (!(Object.hasOwn(HTMLElement.prototype, 'focusGroup'))) {
   const { polyfill } = await import('@microsoft/focusgroup-polyfill');
   polyfill();
 }
