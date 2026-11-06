@@ -190,5 +190,53 @@
         </article>
       </div>
     </main>
+    <script type="module">
+      if (!("interestForElement" in HTMLAnchorElement.prototype)) {
+        await import("https://unpkg.com/interestfor@latest");
+      }
+
+      // Explicit ARIA for screen readers until browsers expose interestfor semantics consistently.
+      // Anything beyond text and images makes a hint "rich" (same split the browser uses).
+      const RICH = ":is(a[href], button, input, select, textarea, [tabindex], h1, h2, h3, h4, h5, h6)";
+      const managed = new WeakSet();
+
+      function wireInterestHints(root = document) {
+        for (const trigger of root.querySelectorAll("[interestfor]")) {
+          const hint = document.getElementById(trigger.getAttribute("interestfor"));
+          if (hint?.getAttribute("popover") !== "hint") {
+            continue;
+          }
+          if (hint.querySelector(RICH)) {
+            // Rich hint: expose open/closed state. Skip triggers whose aria-expanded belongs to something else.
+            if (!trigger.hasAttribute("aria-expanded")) {
+              trigger.ariaExpanded = hint.matches(":popover-open");
+              managed.add(trigger);
+            }
+          } else {
+            // Plain hint: nothing to add when it just repeats the trigger's name. Otherwise it labels
+            // an unnamed trigger (icon-only button) or describes a named one, unless author ARIA already does.
+            const name = (trigger.getAttribute("aria-label") ?? trigger.textContent).trim();
+            if (hint.textContent.trim() === name) {
+              continue;
+            }
+            hint.role ??= "tooltip";
+            if (!trigger.hasAttribute("aria-describedby") && !trigger.hasAttribute("aria-labelledby")) {
+              trigger.setAttribute(name ? "aria-describedby" : "aria-labelledby", hint.id);
+            }
+          }
+        }
+      }
+
+      // `toggle` does not bubble, so one capturing listener on the document covers every hint popover.
+      document.addEventListener("toggle", ({ target, newState }) => {
+        for (const trigger of document.querySelectorAll(`[interestfor="${CSS.escape(target.id)}"]`)) {
+          if (managed.has(trigger)) {
+            trigger.ariaExpanded = newState === "open";
+          }
+        }
+      }, true);
+
+      wireInterestHints();
+    </script>
   </body>
 </html>

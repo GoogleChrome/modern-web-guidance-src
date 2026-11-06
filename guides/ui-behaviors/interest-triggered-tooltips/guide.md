@@ -38,7 +38,7 @@ A user expresses interest in the additional information by hovering or focusing 
 
 The trigger must have a visual indicator to indicate that there is additional information available by interacting with the trigger.
 
-### Accessibility built in to `interestfor`
+### Accessibility
 
 {{ FEATURE("interest-invokers", "accessibility") }}
 
