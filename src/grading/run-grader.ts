@@ -31,26 +31,41 @@ export interface PlaywrightOptions {
   prebuiltTargetError?: string;
 }
 
-async function stageGradingWorkspace(
+export class PatchApplyError extends Error {
+  patchPath: string;
+  constructor(patchPath: string, details?: string) {
+    super(`Failed to apply ${path.basename(patchPath)}: ${details || 'unknown patch error'}`);
+    this.name = 'PatchApplyError';
+    this.patchPath = patchPath;
+  }
+}
+
+export async function stageGradingWorkspace(
   baseApp: string,
   patchFile: string,
   zeroPassrateFile?: string
 ): Promise<{ workDir: string; cleanup: () => void }> {
   const tempHome = createIsolatedHome('grade-run');
   const workDir = path.join(tempHome, baseApp);
+  const cleanup = () => { try { cleanupIsolatedHome(tempHome); } catch {} };
 
-  await copyBaseAppToWorkspace(baseApp, workDir);
+  try {
+    await copyBaseAppToWorkspace(baseApp, workDir);
 
-  for (const file of [zeroPassrateFile, patchFile]) {
-    if (file && fs.existsSync(file) && fs.readFileSync(file, 'utf8').trim()) {
-      applyPatchSync(workDir, file);
+    for (const file of [zeroPassrateFile, patchFile]) {
+      if (file && fs.existsSync(file) && fs.readFileSync(file, 'utf8').trim()) {
+        const res = applyPatchSync(workDir, file);
+        if (!res.success) {
+          throw new PatchApplyError(file, res.error);
+        }
+      }
     }
-  }
 
-  return {
-    workDir,
-    cleanup: () => { try { cleanupIsolatedHome(tempHome); } catch {} }
-  };
+    return { workDir, cleanup };
+  } catch (err) {
+    cleanup();
+    throw err;
+  }
 }
 
 export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
